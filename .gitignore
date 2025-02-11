@@ -1,0 +1,11 @@
+
+
+*.DS_Store
+
+.venv
+
+*.code-workspaces
+
+*.py[cod]
+
+.env
