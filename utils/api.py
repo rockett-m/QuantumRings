@@ -11,18 +11,18 @@ ran as a script (also prints debug info)
 uv run utils/api.py
 """
 
-import os
-import sys
-import platform
-from dotenv import load_dotenv
-from QuantumRingsLib import QuantumRingsProvider
+def load_credentials(num_qubits: int = 128) -> tuple[str, str]:
+    """
+    load .env file to get credentials
+    search for the 200 qubit api key first
+    then the 128 qubit api key
+    """
+    import os, sys
+    from dotenv import load_dotenv
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(ROOT)
+    ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    sys.path.append(ROOT)
 
-
-def load_credentials() -> tuple[str, str]:
-    """ load .env file to get credentials """
     if not os.path.exists(os.path.join(ROOT, '.env')):
         raise ValueError(".env file is not found")
     try:
@@ -30,20 +30,28 @@ def load_credentials() -> tuple[str, str]:
     except Exception as e:
         raise ValueError from e
 
-    TOKEN = os.getenv("TOKEN", None)
+    # choose from TOKEN_128 or TOKEN_200 for qubit count
+    if num_qubits == 128:
+        TOKEN = os.getenv("TOKEN_128", None)
+
+    elif num_qubits == 200:
+        TOKEN = os.getenv("TOKEN_200", None)
+
     if not TOKEN:
-        raise ValueError("TOKEN is not set")
+        raise ValueError("TOKEN_200 / TOKEN_128 are not set in .env")
 
     NAME = os.getenv("NAME", None)
     if not NAME:
         raise ValueError("NAME is not set")
     return NAME, TOKEN
 
-def get_provider() -> object | None:
+
+def get_provider(num_qubits: int = 128) -> object | None:
     """
     returns a QuantumRingsProvider object or None
     """
-    NAME, TOKEN = load_credentials()
+    from QuantumRingsLib import QuantumRingsProvider
+    NAME, TOKEN = load_credentials(num_qubits)
     # token='rings-128 ....'
     # name='<email for account>'
     try:
@@ -57,6 +65,7 @@ def get_provider() -> object | None:
         raise ValueError from e
     finally:
         return QRingsProvider
+
 
 def get_backend(QRingsProvider: object) -> object | None:
     """
@@ -73,11 +82,12 @@ def get_backend(QRingsProvider: object) -> object | None:
     finally:
         return backend
 
-def get_provider_and_backend() -> tuple[object, object]:
+
+def get_provider_and_backend(num_qubits: int = 128) -> tuple[object, object]:
     """
     import this module into other scripts to get provider and backend objects
     """
-    QRingsProvider = get_provider()
+    QRingsProvider = get_provider(num_qubits=num_qubits)
     backend = get_backend(QRingsProvider)
     assert QRingsProvider is not None
     assert backend is not None
@@ -86,6 +96,8 @@ def get_provider_and_backend() -> tuple[object, object]:
 
 
 def debug_info(QRingsProvider: object, backend: object) -> None:
+    import sys
+    import platform
 
     print("\nsys.path =")
     [print(f"{x}") for x in sys.path]
@@ -136,7 +148,8 @@ def debug_info(QRingsProvider: object, backend: object) -> None:
                     print(f'{attr:20} = {value}')
                 else:
                     # coupling map is a list of lists and large output given 128 qubits
-                    print(f'{attr:20} = {value[:50]}\n...\n{value[-50:]}\n')
+                    # print(f'{attr:20} = {value[:50]}\n...\n{value[-50:]}\n')
+                    print(f'{attr:20} = {value}\n')
         except Exception as e:
             print(f'{attr:20} = Error: {e}')
 
@@ -145,7 +158,8 @@ def debug_info(QRingsProvider: object, backend: object) -> None:
 
 if __name__ == "__main__":
 
-    QRingsProvider, backend = get_provider_and_backend()
+    # QRingsProvider, backend = get_provider_and_backend(num_qubits=128)
+    QRingsProvider, backend = get_provider_and_backend(num_qubits=200)
 
     debug_info(QRingsProvider, backend)
 
